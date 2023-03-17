@@ -1,6 +1,6 @@
 # *****************          Preparation section          *****************
-plain_text = open('./plain_text.txt', 'r', encoding="utf-8").read()
-cipher_text = open('./cipher_text.txt', 'r', encoding="utf-8").read()
+plain_text = open('./wisdom.txt', 'r', encoding="utf-8").read()
+cipher_text = open('./cipher.txt', 'r', encoding="utf-8").read()
 plain_text_size = len(plain_text)
 cipher_text_size = len(cipher_text)
 indexes_of_encryption = open("./indexes_of_encryption_part.txt", "w")
