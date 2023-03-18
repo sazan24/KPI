@@ -16,7 +16,6 @@ KPI/<br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Basics of Information Protection Technologies/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Theoretical Foundations of Information Protection/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Linux OS/ <br>
-|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ • Smart Cities/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Data Analysis/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Systems Engineering/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;─ 3 course/ <br>
