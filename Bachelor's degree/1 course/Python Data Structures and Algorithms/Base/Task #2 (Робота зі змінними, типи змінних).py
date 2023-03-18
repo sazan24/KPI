@@ -1,0 +1,10 @@
+#Computer Science FB01, Task 2, Сахній Назар ФБ-01
+print("Computer Science FB01, Task 2")
+print("Сахній Назар ФБ-01")
+x = float(input("\nВведіть число x:  "))
+y = float(input("Введіть число y, крім -78:  "))
+z = float(input("Введіть число z, відмінне від нуля:  "))
+t = x-(x+y/z)/(78+y)
+float(t)
+print("6)x-(x+y/z)/(78+y)={0:.2f}".format(t))
+input("\nЩоб вийти із програми, натисність Enter")
