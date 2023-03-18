@@ -1,0 +1,897 @@
+Практичне завдання №3 “Криптографічні механізми захисту даних”.
+
+Хід роботи:
+
+1. Захищений доступ з використанням SSH.
+1.1. Задайте відповідні мережні адреси і утилітою ping перевірте досяжність між ними. 
+Припустимо, що VM Client має IP адресу 192.168.74.10, а VM Server - 192.168.74.100.
+
+--Задамо відповідні мережні адреси
+VM Client:
+┌──(nazar㉿Client)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.addresses 192.168.74.10/24                                  
+                                                                                                                      
+┌──(nazar㉿Client)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.gateway 192.168.74.1      
+                                                                                                                      
+┌──(nazar㉿Client)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.method manual       
+                                                                                                                                                                                                                                           
+VM Server:                                                                                                                  
+┌──(nazar㉿Server)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.addresses 192.168.74.100/24
+                                                                                                                  
+┌──(nazar㉿Server)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.gateway 192.168.74.1
+                                                                                                                  
+┌──(nazar㉿Server)-[~]
+└─$ nmcli connection modify Wired\ connection\ 1 ipv4.method manual  
+
+-- Утилітою ping перевіримо досяжність між ними
+VM Client:                                                                            
+┌──(nazar㉿Client)-[~]
+└─$ ping -c4 192.168.74.100                                            2 ⨯
+PING 192.168.74.100 (192.168.74.100) 56(84) bytes of data.
+64 bytes from 192.168.74.100: icmp_seq=1 ttl=64 time=0.760 ms
+64 bytes from 192.168.74.100: icmp_seq=2 ttl=64 time=0.888 ms
+64 bytes from 192.168.74.100: icmp_seq=3 ttl=64 time=0.830 ms
+64 bytes from 192.168.74.100: icmp_seq=4 ttl=64 time=0.857 ms
+
+--- 192.168.74.100 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3032ms
+rtt min/avg/max/mdev = 0.760/0.833/0.888/0.047 ms
+
+VM Server: 
+┌──(nazar㉿Server)-[~]
+└─$ ping -c4 192.168.74.10                                                                                                            1 ⨯
+PING 192.168.74.10 (192.168.74.10) 56(84) bytes of data.
+64 bytes from 192.168.74.10: icmp_seq=1 ttl=64 time=1.35 ms
+64 bytes from 192.168.74.10: icmp_seq=2 ttl=64 time=1.10 ms
+64 bytes from 192.168.74.10: icmp_seq=3 ttl=64 time=1.16 ms
+64 bytes from 192.168.74.10: icmp_seq=4 ttl=64 time=1.16 ms
+
+--- 192.168.74.10 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 1.104/1.193/1.352/0.094 ms
+
+
+1.2. На VM Server перевірте, що сервіс ssh запущено:
+┌──(nazar㉿Server)-[~]
+└─$ ps -A | grep sshd  
+
+┌──(nazar㉿Server)-[~]
+└─$ sudo service ssh status
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/lib/systemd/system/ssh.service; disabled; vendor preset: disabled)
+     Active: inactive (dead) 
+
+↑Бачимо, що SSH-сервіс не активний, тому запустимо його
+┌──(nazar㉿Server)-[~]
+└─$ sudo service ssh start                                                                                                            3 ⨯
+                                                                                                                                          
+┌──(nazar㉿Server)-[~]
+└─$ sudo service ssh status
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/lib/systemd/system/ssh.service; disabled; vendor preset: disabled)
+     Active: active (running) since Mon 2021-12-13 09:43:44 EET; 5s ago
+       Docs: man:sshd(8)
+             man:sshd_config(5)
+    Process: 2401 ExecStartPre=/usr/sbin/sshd -t (code=exited, status=0/SUCCESS)
+   Main PID: 2402 (sshd)
+      Tasks: 1 (limit: 2275)
+     Memory: 1.0M
+     CGroup: /system.slice/ssh.service
+             └─2402 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+
+гру 13 09:43:44 Server systemd[1]: Starting OpenBSD Secure Shell server...
+гру 13 09:43:44 Server sshd[2402]: Server listening on 0.0.0.0 port 22.
+гру 13 09:43:44 Server sshd[2402]: Server listening on :: port 22.
+гру 13 09:43:44 Server systemd[1]: Started OpenBSD Secure Shell server.
+                                                                                                                                          
+┌──(nazar㉿Server)-[~]
+└─$ ps -A | grep sshd      
+   2402 ?        00:00:00 sshd
+
+
+1.3. З VM Client встановіть захищене з’єднання з Server:
+┌──(nazar㉿Client)-[~]
+└─$ ssh -l nazar 192.168.74.100                                      255 ⨯
+The authenticity of host '192.168.74.100 (192.168.74.100)' can't be established.
+ECDSA key fingerprint is SHA256:uFSh/H0o/4SxSmBIHoYu3rgij1DYttZo3qdC7XGn814.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.168.74.100' (ECDSA) to the list of known hosts.
+nazar@192.168.74.100's password: 
+Linux Server 5.9.0-kali1-amd64 #1 SMP Debian 5.9.1-1kali2 (2020-10-29) x86_64
+
+The programs included with the Kali GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Kali GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+┏━(Message from Kali developers)
+┃
+┃ We have kept /usr/bin/python pointing to Python 2 for backwards
+┃ compatibility. Learn how to change this and avoid this message:
+┃ ⇒ https://www.kali.org/docs/general-use/python3-transition/
+┃
+┗━(Run “touch ~/.hushlogin” to hide this message)
+
+┌──(nazar㉿Server)-[~]
+└─$ 
+↑Ми відкрили ssh сеанс з VM Server.
+
+Виконайте кілька команд на віддаленому комп'ютері і закрийте з'єднання:
+┌──(nazar㉿Server)-[~]
+└─$ mkdir New_directory
+                                                                                                                                                                                                                                           
+┌──(nazar㉿Server)-[~]
+└─$ ls -l              
+загалом 36
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Відео
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Документи
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Завантажене
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Загальне
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Картинки
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Музика
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Стільниця
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Шаблони
+drwxr-xr-x 2 nazar nazar 4096 гру 13 09:50 New_directory
+
+┌──(nazar㉿Server)-[~]
+└─$ exit
+Connection to 192.168.74.100 closed.
+                                                                                                                                                                                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ 
+
+
+1.4. Запуск команди на VM Server:
+┌──(nazar㉿Client)-[~]
+└─$ ssh -l nazar 192.168.74.100 pwd
+nazar@192.168.74.100's password: 
+/home/nazar
+
+┌──(nazar㉿Client)-[~]
+└─$ ssh -l nazar 192.168.74.100 date
+nazar@192.168.74.100's password: 
+понеділок, 13 грудня 2021 10:14:33 +0200
+
+Щоб запустити віддалено інтерактивну команду (програму): 
+┌──(nazar㉿Client)-[~]
+└─$ ssh -t -l nazar 192.168.74.100 vi
+nazar@192.168.74.100's password: 
+
+~
+~
+~
+
+
+1.5 Копіювання файлів по захищеному з’єднанню:
+Створимо файл на VM Client:
+┌──(nazar㉿Client)-[~]
+└─$ echo Hello World! > my_file
+                                                                                                                                          
+┌──(nazar㉿Client)-[~]
+└─$ cat my_file                
+Hello World!
+
+Скопіюємо файл на VM Server:                 
+┌──(nazar㉿Client)-[~]
+└─$ scp My_file nazar@192.168.74.100:                                  
+nazar@192.168.74.100's password: 
+My_file                                  100%   13    11.5KB/s   00:00
+
+↓Перевіримо його наявність
+┌──(nazar㉿Server)-[~]
+└─$ ls -l
+загалом 40
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Відео
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Документи
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Завантажене
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Загальне
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Картинки
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Музика
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Стільниця
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Шаблони
+-rw-r--r-- 1 nazar nazar   13 гру 13 10:44 My_file
+drwxr-xr-x 2 nazar nazar 4096 гру 13 10:42 New_directory
+ 
+
+2. Застосування GPG для шифрування і цифрового підпису.
+2.1. Створіть пару відкритий / таємний ключ:
+┌──(nazar㉿Client)-[~]
+└─$ gpg --gen-key
+gpg (GnuPG) 2.2.20; Copyright (C) 2020 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Зауваження: скористайтеся «gpg --full-generate-key», щоб викликати повноцінне діалогове вікно створення ключа.
+
+GnuPG має побудувати ідентифікатор користувача для розпізнавання вашого ключа.
+
+Справжнє ім’я: client
+Адреса ел. пошти: nazar_client@gmail.com
+Вами вибрано такий ідентифікатор (USER-ID):
+    "client <nazar_client@gmail.com>"
+
+Змінити назву (N), ел. пошту (E) або гаразд (O) чи вийти (Q)? o
+Потрібно буде створити багато псевдовипадкових байтів. Варто виконувати
+якісь інші дії (натискати клавіші, пересувати мишу, використовувати диски)
+під час створення простого числа. Це надасть змогу генератору
+псевдовипадкових чисел створити краще випадкове число.
+Потрібно буде створити багато псевдовипадкових байтів. Варто виконувати
+якісь інші дії (натискати клавіші, пересувати мишу, використовувати диски)
+під час створення простого числа. Це надасть змогу генератору
+псевдовипадкових чисел створити краще випадкове число.
+gpg: /home/nazar/.gnupg/trustdb.gpg: створено trustdb
+gpg: ключ 464DF2F3D77090DC позначено як ключ з необмеженою довірою
+gpg: створено каталог «/home/nazar/.gnupg/openpgp-revocs.d»
+gpg: сертифікат відкликання збережено як «/home/nazar/.gnupg/openpgp-revocs.d/14220724B659D4B9DBABB209464DF2F3D77090DC.rev»
+відкритий і закритий ключі створено і підписано.
+
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid                      client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+
+Щоб переглянути атрибути існуючих ключів, скористайтеся командами:
+┌──(nazar㉿Client)-[~]
+└─$ gpg --list-secret-keys
+/home/nazar/.gnupg/pubring.kbx
+------------------------------
+sec   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid           [безмежна] client <nazar_client@gmail.com>
+ssb   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+┌──(nazar㉿Client)-[~]
+└─$ gpg --list-public-keys
+/home/nazar/.gnupg/pubring.kbx
+------------------------------
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid           [безмежна] client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+Тут pub(public) - відкритий ключ, sec(secret:-) - таємний ключ, 
+sub и ssb - вторинні ключі (в даному завданні не використовуються).
+
+
+Експорт відкритого ключа (збереження у файл):
+┌──(nazar㉿Client)-[~]
+└─$ gpg --export -a "client" > client.pubkey 
+
+ 
+Скопіюйте цей ключ на VM Server:
+┌──(nazar㉿Client)-[~]
+└─$ scp client.pubkey 192.168.74.100:      
+nazar@192.168.74.100's password: 
+client.pubkey                            100% 2452     2.7MB/s   00:00    
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ ssh -l nazar 192.168.74.100 ls -l                          
+nazar@192.168.74.100's password: 
+загалом 44
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Відео
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Документи
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Завантажене
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Загальне
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Картинки
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Музика
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Стільниця
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Шаблони
+-rw-r--r-- 1 nazar nazar 2452 гру 13 11:04 client.pubkey   ←
+-rw-r--r-- 1 nazar nazar   13 гру 13 10:44 My_file
+drwxr-xr-x 2 nazar nazar 4096 гру 13 10:42 New_directory
+
+
+Створіть файл:
+┌──(nazar㉿Client)-[~]
+└─$ date +%s > testfile
+
+
+Створіть ЦП цього файла:
+┌──(nazar㉿Client)-[~]
+└─$ gpg --clearsign testfile
+
+
+Передайте файл з ЦП на VM Server:
+┌──(nazar㉿Client)-[~]
+└─$ scp testfile.asc 192.168.74.100:
+nazar@192.168.74.100's password: 
+testfile.asc                             100%  719   796.8KB/s   00:00
+
+┌──(nazar㉿Client)-[~]
+└─$ ssh -l nazar 192.168.74.100 ls -l
+nazar@192.168.74.100's password: 
+загалом 48
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Відео
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Документи
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Завантажене
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Загальне
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Картинки
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Музика
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Стільниця
+drwxr-xr-x 2 nazar nazar 4096 гру 12 20:42 Шаблони
+-rw-r--r-- 1 nazar nazar 2452 гру 13 11:04 client.pubkey
+-rw-r--r-- 1 nazar nazar   13 гру 13 10:44 My_file
+drwxr-xr-x 2 nazar nazar 4096 гру 13 10:42 New_directory
+-rw-r--r-- 1 nazar nazar  719 гру 13 11:12 testfile.asc   ←
+
+
+2.2 На VM Server імпортуйте ключ client:
+┌──(nazar㉿Server)-[~]
+└─$ gpg --import client.pubkey
+gpg: /home/nazar/.gnupg/trustdb.gpg: створено trustdb
+gpg: ключ 464DF2F3D77090DC: імпортовано відкритий ключ «client <nazar_client@gmail.com>»
+gpg: Загалом оброблено: 1
+gpg:            імпортовано: 1
+                                                                                                                                          
+┌──(nazar㉿Server)-[~]
+└─$ gpg --list-public-keys
+/home/nazar/.gnupg/pubring.kbx
+------------------------------
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid           [невідома] client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+
+Перевірте ЦП отриманого файла:
+┌──(nazar㉿Server)-[~]
+└─$ gpg --verify testfile.asc
+gpg: Підпис створено пн, 13-гру-2021 11:09:08 +0200 EET
+gpg:                за допомогою RSA ключа 14220724B659D4B9DBABB209464DF2F3D77090DC
+gpg: Належний підпис від «client <nazar_client@gmail.com>» [невідомо]
+gpg: УВАГА: цей ключ не сертифіковано за допомогою надійного підпису!
+gpg:          Немає підтверджень належності підпису його власнику.
+Основний відбиток ключа: 1422 0724 B659 D4B9 DBAB  B209 464D F2F3 D770 90DC
+
+
+На VM Server також згенеруйте відкритий\таємний ключ User2:
+┌──(nazar㉿Server)-[~]
+└─$ gpg --gen-key
+gpg (GnuPG) 2.2.20; Copyright (C) 2020 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Зауваження: скористайтеся «gpg --full-generate-key», щоб викликати повноцінне діалогове вікно створення ключа.
+
+GnuPG має побудувати ідентифікатор користувача для розпізнавання вашого ключа.
+
+Справжнє ім’я: server
+Адреса ел. пошти: nazar_server@gmail.com
+Вами вибрано такий ідентифікатор (USER-ID):
+    "server <nazar_server@gmail.com>"
+
+Змінити назву (N), ел. пошту (E) або гаразд (O) чи вийти (Q)? o
+Потрібно буде створити багато псевдовипадкових байтів. Варто виконувати
+якісь інші дії (натискати клавіші, пересувати мишу, використовувати диски)
+під час створення простого числа. Це надасть змогу генератору
+псевдовипадкових чисел створити краще випадкове число.
+Потрібно буде створити багато псевдовипадкових байтів. Варто виконувати
+якісь інші дії (натискати клавіші, пересувати мишу, використовувати диски)
+під час створення простого числа. Це надасть змогу генератору
+псевдовипадкових чисел створити краще випадкове число.
+gpg: ключ 38A8894E35AFC32B позначено як ключ з необмеженою довірою
+gpg: створено каталог «/home/nazar/.gnupg/openpgp-revocs.d»
+gpg: сертифікат відкликання збережено як «/home/nazar/.gnupg/openpgp-revocs.d/F94886C7160A2F6B0BC90DF938A8894E35AFC32B.rev»
+відкритий і закритий ключі створено і підписано.
+
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      F94886C7160A2F6B0BC90DF938A8894E35AFC32B
+uid                      server <nazar_server@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+┌──(nazar㉿Server)-[~]
+└─$ gpg --list-public-keys
+/home/nazar/.gnupg/pubring.kbx
+------------------------------
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid           [невідома] client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      F94886C7160A2F6B0BC90DF938A8894E35AFC32B
+uid           [безмежна] server <nazar_server@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+
+Тепер експортуйте відкритий ключ server:
+┌──(nazar㉿Server)-[~]
+└─$ gpg --export -a "server" > server.pubkey
+
+із VM Server встановити захищене з'єднання з Client та скопіювати відкритий ключ на VM Client:
+┌──(nazar㉿Server)-[~]
+└─$ scp server.pubkey 192.168.74.10:                                                                                                  1 ⨯
+The authenticity of host '192.168.74.10 (192.168.74.10)' can't be established.
+ECDSA key fingerprint is SHA256:X9SolVrdO0OCx2PL/Ix5CfYt/1cASjtIMGaZ/e0HWcM.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.168.74.10' (ECDSA) to the list of known hosts.
+nazar@192.168.74.10's password: 
+server.pubkey 
+
+
+На VM Server створіть файли test.file та test1.file і введіте в них дані:
+┌──(nazar㉿Server)-[~]
+└─$ date +%s > test.file
+                                                                                                                                          
+┌──(nazar㉿Server)-[~]
+└─$ date +%s > test1.file
+
+
+Зашифруйте перший файл ключом адресата (client):
+┌──(nazar㉿Server)-[~]
+└─$ gpg -e -r 14220724B659D4B9DBABB209464DF2F3D77090DC -a test.file
+gpg: FF07FD2EC7E509BB: немає певності щодо належності цього ключа користувачеві з вказаним іменем
+
+sub  rsa3072/FF07FD2EC7E509BB 2021-12-13 client <nazar_client@gmail.com>
+Відбиток основного ключа: 1422 0724 B659 D4B9 DBAB  B209 464D F2F3 D770 90DC
+       Відбиток підключа: 2F8A EE0B E1CB 5AE2 A60F  1EBF FF07 FD2E C7E5 09BB
+
+Не можна з певністю вважати, що ключ належить особі,
+вказаній у ідентифікаторі користувача. Якщо вам *точно*
+відомі наслідки ваших дій, можете ствердно відповісти
+на наступне питання.
+
+Попри все використовувати цей ключ? (y/N або т/Н) y
+
+
+Шифрування файла з ЦП:
+┌──(nazar㉿Server)-[~]
+└─$ gpg -e -s -r 14220724B659D4B9DBABB209464DF2F3D77090DC -a test1.file                                                               2 ⨯
+gpg: FF07FD2EC7E509BB: немає певності щодо належності цього ключа користувачеві з вказаним іменем
+
+sub  rsa3072/FF07FD2EC7E509BB 2021-12-13 client <nazar_client@gmail.com>
+Відбиток основного ключа: 1422 0724 B659 D4B9 DBAB  B209 464D F2F3 D770 90DC
+       Відбиток підключа: 2F8A EE0B E1CB 5AE2 A60F  1EBF FF07 FD2E C7E5 09BB
+
+Не можна з певністю вважати, що ключ належить особі,
+вказаній у ідентифікаторі користувача. Якщо вам *точно*
+відомі наслідки ваших дій, можете ствердно відповісти
+на наступне питання.
+
+Попри все використовувати цей ключ? (y/N або т/Н) y
+
+
+Скопіюйте файли на VM Client:
+┌──(nazar㉿Server)-[~]
+└─$ scp test.file.asc 192.168.74.10:                                                                                                  1 ⨯
+nazar@192.168.74.10's password: 
+test.file.asc                                                                                           100%  711   380.9KB/s   00:00    
+                                                                                                                                          
+┌──(nazar㉿Server)-[~]
+└─$ scp test1.file.asc 192.168.74.10: 
+nazar@192.168.74.10's password: 
+test1.file.asc  
+
+2.3 На VM Client імпортуйте ключ server: 
+┌──(nazar㉿Client)-[~]
+└─$ gpg --import server.pubkey                                       
+gpg: ключ 38A8894E35AFC32B: імпортовано відкритий ключ «server <nazar_server@gmail.com>»
+gpg: Загалом оброблено: 1
+gpg:            імпортовано: 1
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ gpg --list-public-keys
+/home/nazar/.gnupg/pubring.kbx
+------------------------------
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      14220724B659D4B9DBABB209464DF2F3D77090DC
+uid           [безмежна] client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      F94886C7160A2F6B0BC90DF938A8894E35AFC32B
+uid           [невідома] server <nazar_server@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+
+Перевірте геш нового ключа:
+┌──(nazar㉿Client)-[~]
+└─$ gpg --fingerprint 14220724B659D4B9DBABB209464DF2F3D77090DC
+pub   rsa3072 2021-12-13 [SC] [діє до: 2023-12-13]
+      1422 0724 B659 D4B9 DBAB  B209 464D F2F3 D770 90DC
+uid           [безмежна] client <nazar_client@gmail.com>
+sub   rsa3072 2021-12-13 [E] [діє до: 2023-12-13]
+
+
+Розшифруйте файли та перевірте ЦП:
+┌──(nazar㉿Client)-[~]
+└─$ gpg test.file.asc                                                  
+gpg: WARNING: no command supplied.  Trying to guess what you mean ...
+gpg: зашифровано за допомогою 3072-бітового RSA ключа, ідентифікатор FF07FD2EC7E509BB, створено 2021-12-13
+      «client <nazar_client@gmail.com>»
+
+┌──(nazar㉿Client)-[~]
+└─$ gpg test1.file.asc                                                 
+gpg: WARNING: no command supplied.  Trying to guess what you mean ...
+gpg: зашифровано за допомогою 3072-бітового RSA ключа, ідентифікатор FF07FD2EC7E509BB, створено 2021-12-13
+      «client <nazar_client@gmail.com>»
+gpg: Підпис створено пн, 13-гру-2021 14:17:24 +0200 EET
+gpg:                за допомогою RSA ключа F94886C7160A2F6B0BC90DF938A8894E35AFC32B
+gpg: Належний підпис від «server <nazar_server@gmail.com>» [невідомо]
+gpg: УВАГА: цей ключ не сертифіковано за допомогою надійного підпису!
+gpg:          Немає підтверджень належності підпису його власнику.
+Основний відбиток ключа: F948 86C7 160A 2F6B 0BC9  0DF9 38A8 894E 35AF C32B
+
+
+Щоб видалити пару відкритий / таємний ключ, скористайтеся командою:
+┌──(nazar㉿Client)-[~]
+└─$ gpg --delete-secret-and-public-key 14220724B659D4B9DBABB209464DF2F3D77090DC
+gpg (GnuPG) 2.2.20; Copyright (C) 2020 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+
+sec  rsa3072/464DF2F3D77090DC 2021-12-13 client <nazar_client@gmail.com>
+
+Вилучити цей ключ зі сховища? (y/N або т/Н) y
+Цей ключ є закритим! Вилучити його? (y/N або т/Н) y
+
+pub  rsa3072/464DF2F3D77090DC 2021-12-13 client <nazar_client@gmail.com>
+
+Вилучити цей ключ зі сховища? (y/N або т/Н) y
+
+
+3. Застосування SSL
+3.1 Створення і перевірка сертифіката SSL.
+
+Створіть таємний ключ:
+┌──(nazar㉿Client)-[~]
+└─$ dd if=/dev/random of=.rnd count=64
+64+0 записів прочитано
+64+0 записів записано
+скопійовано 32768 байтів (33 kB, 32 KiB), 0,000838841 s, 39,1 MB/s
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ openssl genrsa -rand .rnd -out priv.key -aes256 2048 
+Generating RSA private key, 2048 bit long modulus (2 primes)
+.........+++++
+..........................+++++
+e is 65537 (0x010001)
+Enter pass phrase for priv.key:
+Verifying - Enter pass phrase for priv.key:
+
+
+Створіть сертифікат-запит:
+* У параметрах сертіфііката обов'язково вкажіть ваші прізвище, ім'я, групу і номер залікової книжки.
+┌──(nazar㉿Client)-[~]
+└─$ openssl req -new -key priv.key -out certif.csr
+Enter pass phrase for priv.key:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:UA
+State or Province Name (full name) [Some-State]:Kyivska oblast
+Locality Name (eg, city) []:Kyiv
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:KPI
+Organizational Unit Name (eg, section) []:IPT
+Common Name (e.g. server FQDN or YOUR name) []:FB-01 Sakhnii Nazar
+Email Address []:snz24@gmail.com
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:123454321
+An optional company name []:NANo
+
+
+Створіть самопідписаний сертифікат:
+* Якщо у навчальній системі відсутній алгоритм sha256, використовуйте sha1. Зверніть увагу, 
+що sha1 і sha - це різні геш-функції. Для реальних додатків sha і sha1 вважаються не стійкими.
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -req -sha256 -signkey priv.key -in certif.csr -out certif.crt -days 1830
+Signature ok
+subject=C = UA, ST = Kyivska oblast, L = Kyiv, O = KPI, OU = IPT, CN = FB-01 Sakhnii Nazar, emailAddress = snz24@gmail.com
+Getting Private key
+Enter pass phrase for priv.key:
+
+
+Виведіть дані сертифікату в текстовому форматі:
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -text -in certif.crt
+Certificate:
+    Data:
+        Version: 1 (0x0)
+        Serial Number:
+            5c:70:ca:32:d4:4c:79:3c:c1:5c:a4:24:9e:20:08:2a:2c:0e:c8:1a
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = UA, ST = Kyivska oblast, L = Kyiv, O = KPI, OU = IPT, CN = FB-01 Sakhnii Nazar, emailAddress = snz24@gmail.com
+        Validity
+            Not Before: Dec 13 21:33:55 2021 GMT
+            Not After : Dec 17 21:33:55 2026 GMT
+        Subject: C = UA, ST = Kyivska oblast, L = Kyiv, O = KPI, OU = IPT, CN = FB-01 Sakhnii Nazar, emailAddress = snz24@gmail.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (2048 bit)
+                Modulus:
+                    00:d7:9a:a0:63:56:e2:cc:cb:2d:b4:48:19:1e:c4:
+                    3a:15:d6:4f:b8:ff:ac:57:21:b2:47:16:b1:a7:f5:
+                    8d:8e:1e:1c:fd:6e:18:b3:d3:3c:47:99:32:b3:ff:
+                    a6:a9:6f:6e:31:98:cf:09:c5:0c:e2:f6:5b:eb:c7:
+                    0e:9c:d7:57:1d:da:a5:57:ae:f8:50:b5:e7:de:1a:
+                    b8:52:1d:bf:57:94:a1:f0:37:22:c1:9e:98:13:f9:
+                    12:08:dc:fb:85:73:e4:6e:d2:6e:fb:e8:51:d2:9e:
+                    c0:bb:d6:95:13:1b:55:38:3d:de:8f:84:b8:1a:dc:
+                    3c:59:8f:14:26:bb:d7:3a:62:8c:6d:b2:23:28:58:
+                    77:46:97:a4:40:99:85:31:df:d1:6a:7c:5a:f4:25:
+                    2e:7a:bb:63:af:27:61:35:54:1f:90:c5:c9:ee:2f:
+                    0c:c2:4a:ba:d3:ab:4d:51:0f:e2:2d:50:f7:74:44:
+                    be:9a:ff:fa:57:c1:e8:1e:a5:bd:bc:92:ed:de:3c:
+                    43:1a:c1:9d:cf:2a:d8:c9:d1:e4:f1:59:aa:3e:c5:
+                    46:15:13:d3:06:1e:34:8a:07:b2:b3:0c:0b:90:b4:
+                    87:bf:64:f1:f9:ca:aa:a1:11:13:b6:8d:65:44:56:
+                    69:cc:4c:ed:09:d2:68:79:10:9d:73:a6:a4:93:f8:
+                    3e:eb
+                Exponent: 65537 (0x10001)
+    Signature Algorithm: sha256WithRSAEncryption
+         21:a7:cb:09:72:8a:6a:5f:0c:b1:16:cd:57:ce:55:b6:51:fb:
+         6e:cf:5b:b2:4b:31:40:fa:b2:ff:08:e9:38:57:0f:9d:f7:78:
+         8c:f4:f0:61:80:65:61:a0:05:e1:50:de:29:41:c6:46:5e:43:
+         da:ce:b4:5e:92:aa:a3:08:b3:dd:8d:12:dc:ab:30:0d:e8:dd:
+         bb:09:fe:cb:b1:07:cf:eb:fe:b3:a2:22:56:1d:d8:23:91:18:
+         7f:e6:0e:f5:b7:91:d6:e4:ac:86:15:4c:b4:3b:2d:ff:b8:bc:
+         8b:04:68:68:3e:aa:ae:c2:fd:ab:03:b6:aa:a5:bc:0b:7e:87:
+         cc:89:97:4b:05:be:45:c7:5b:b4:e0:bf:90:12:6e:6b:de:81:
+         27:8d:4e:f1:19:59:c4:ed:16:11:32:0b:48:44:aa:5b:f4:15:
+         e9:ba:e1:cc:76:ae:46:1c:7e:02:64:b1:b6:99:35:87:6f:02:
+         10:ce:5a:0e:42:5b:48:06:3c:db:9b:04:ff:41:ce:52:81:e2:
+         c5:5d:3b:78:66:d2:f1:b5:4b:00:b2:b2:77:59:19:a4:53:ac:
+         74:61:6f:7e:8f:0b:92:2e:ff:a5:a6:a7:02:c5:9e:a9:16:e8:
+         f5:bb:08:01:c0:00:38:c9:16:ee:30:6a:28:76:9b:eb:82:b6:
+         a7:a5:8a:10
+-----BEGIN CERTIFICATE-----
+MIIDpzCCAo8CFFxwyjLUTHk8wVykJJ4gCCosDsgaMA0GCSqGSIb3DQEBCwUAMIGP
+MQswCQYDVQQGEwJVQTEXMBUGA1UECAwOS3lpdnNrYSBvYmxhc3QxDTALBgNVBAcM
+BEt5aXYxDDAKBgNVBAoMA0tQSTEMMAoGA1UECwwDSVBUMRwwGgYDVQQDDBNGQi0w
+MSBTYWtobmlpIE5hemFyMR4wHAYJKoZIhvcNAQkBFg9zbnoyNEBnbWFpbC5jb20w
+HhcNMjExMjEzMjEzMzU1WhcNMjYxMjE3MjEzMzU1WjCBjzELMAkGA1UEBhMCVUEx
+FzAVBgNVBAgMDkt5aXZza2Egb2JsYXN0MQ0wCwYDVQQHDARLeWl2MQwwCgYDVQQK
+DANLUEkxDDAKBgNVBAsMA0lQVDEcMBoGA1UEAwwTRkItMDEgU2FraG5paSBOYXph
+cjEeMBwGCSqGSIb3DQEJARYPc256MjRAZ21haWwuY29tMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEA15qgY1bizMsttEgZHsQ6FdZPuP+sVyGyRxaxp/WN
+jh4c/W4Ys9M8R5kys/+mqW9uMZjPCcUM4vZb68cOnNdXHdqlV674ULXn3hq4Uh2/
+V5Sh8DciwZ6YE/kSCNz7hXPkbtJu++hR0p7Au9aVExtVOD3ej4S4Gtw8WY8UJrvX
+OmKMbbIjKFh3RpekQJmFMd/Ranxa9CUuertjrydhNVQfkMXJ7i8Mwkq606tNUQ/i
+LVD3dES+mv/6V8HoHqW9vJLt3jxDGsGdzyrYydHk8VmqPsVGFRPTBh40igeyswwL
+kLSHv2Tx+cqqoRETto1lRFZpzEztCdJoeRCdc6akk/g+6wIDAQABMA0GCSqGSIb3
+DQEBCwUAA4IBAQAhp8sJcopqXwyxFs1XzlW2Uftuz1uySzFA+rL/COk4Vw+d93iM
+9PBhgGVhoAXhUN4pQcZGXkPazrRekqqjCLPdjRLcqzAN6N27Cf7LsQfP6/6zoiJW
+HdgjkRh/5g71t5HW5KyGFUy0Oy3/uLyLBGhoPqquwv2rA7aqpbwLfofMiZdLBb5F
+x1u04L+QEm5r3oEnjU7xGVnE7RYRMgtIRKpb9BXpuuHMdq5GHH4CZLG2mTWHbwIQ
+zloOQltIBjzbmwT/Qc5SgeLFXTt4ZtLxtUsAsrJ3WRmkU6x0YW9+jwuSLv+lpqcC
+xZ6pFuj1uwgBwAA4yRbuMGoodpvrgranpYoQ
+-----END CERTIFICATE-----
+
+та збережіть окремим файлом:
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -text -in certif.crt > certiftxt.crt
+
+
+Експортуйте відкритий ключ:
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -in certiftxt.crt -pubkey
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA15qgY1bizMsttEgZHsQ6
+FdZPuP+sVyGyRxaxp/WNjh4c/W4Ys9M8R5kys/+mqW9uMZjPCcUM4vZb68cOnNdX
+HdqlV674ULXn3hq4Uh2/V5Sh8DciwZ6YE/kSCNz7hXPkbtJu++hR0p7Au9aVExtV
+OD3ej4S4Gtw8WY8UJrvXOmKMbbIjKFh3RpekQJmFMd/Ranxa9CUuertjrydhNVQf
+kMXJ7i8Mwkq606tNUQ/iLVD3dES+mv/6V8HoHqW9vJLt3jxDGsGdzyrYydHk8Vmq
+PsVGFRPTBh40igeyswwLkLSHv2Tx+cqqoRETto1lRFZpzEztCdJoeRCdc6akk/g+
+6wIDAQAB
+-----END PUBLIC KEY-----
+-----BEGIN CERTIFICATE-----
+MIIDpzCCAo8CFFxwyjLUTHk8wVykJJ4gCCosDsgaMA0GCSqGSIb3DQEBCwUAMIGP
+MQswCQYDVQQGEwJVQTEXMBUGA1UECAwOS3lpdnNrYSBvYmxhc3QxDTALBgNVBAcM
+BEt5aXYxDDAKBgNVBAoMA0tQSTEMMAoGA1UECwwDSVBUMRwwGgYDVQQDDBNGQi0w
+MSBTYWtobmlpIE5hemFyMR4wHAYJKoZIhvcNAQkBFg9zbnoyNEBnbWFpbC5jb20w
+HhcNMjExMjEzMjEzMzU1WhcNMjYxMjE3MjEzMzU1WjCBjzELMAkGA1UEBhMCVUEx
+FzAVBgNVBAgMDkt5aXZza2Egb2JsYXN0MQ0wCwYDVQQHDARLeWl2MQwwCgYDVQQK
+DANLUEkxDDAKBgNVBAsMA0lQVDEcMBoGA1UEAwwTRkItMDEgU2FraG5paSBOYXph
+cjEeMBwGCSqGSIb3DQEJARYPc256MjRAZ21haWwuY29tMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEA15qgY1bizMsttEgZHsQ6FdZPuP+sVyGyRxaxp/WN
+jh4c/W4Ys9M8R5kys/+mqW9uMZjPCcUM4vZb68cOnNdXHdqlV674ULXn3hq4Uh2/
+V5Sh8DciwZ6YE/kSCNz7hXPkbtJu++hR0p7Au9aVExtVOD3ej4S4Gtw8WY8UJrvX
+OmKMbbIjKFh3RpekQJmFMd/Ranxa9CUuertjrydhNVQfkMXJ7i8Mwkq606tNUQ/i
+LVD3dES+mv/6V8HoHqW9vJLt3jxDGsGdzyrYydHk8VmqPsVGFRPTBh40igeyswwL
+kLSHv2Tx+cqqoRETto1lRFZpzEztCdJoeRCdc6akk/g+6wIDAQABMA0GCSqGSIb3
+DQEBCwUAA4IBAQAhp8sJcopqXwyxFs1XzlW2Uftuz1uySzFA+rL/COk4Vw+d93iM
+9PBhgGVhoAXhUN4pQcZGXkPazrRekqqjCLPdjRLcqzAN6N27Cf7LsQfP6/6zoiJW
+HdgjkRh/5g71t5HW5KyGFUy0Oy3/uLyLBGhoPqquwv2rA7aqpbwLfofMiZdLBb5F
+x1u04L+QEm5r3oEnjU7xGVnE7RYRMgtIRKpb9BXpuuHMdq5GHH4CZLG2mTWHbwIQ
+zloOQltIBjzbmwT/Qc5SgeLFXTt4ZtLxtUsAsrJ3WRmkU6x0YW9+jwuSLv+lpqcC
+xZ6pFuj1uwgBwAA4yRbuMGoodpvrgranpYoQ
+-----END CERTIFICATE-----
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -in certif.crt -pubkey > pubkey.pem
+
+
+Перевірте сертифікат:
+┌──(nazar㉿Client)-[~]
+└─$ openssl verify certiftxt.crt                                       2 ⨯
+C = UA, ST = Kyivska oblast, L = Kyiv, O = KPI, OU = IPT, CN = FB-01 Sakhnii Nazar, emailAddress = snz24@gmail.com
+error 18 at 0 depth lookup: self signed certificate
+error certiftxt.crt: verification failed
+
+
+Добавте сертифікат в список довірених:
+┌──(nazar㉿Client)-[~]
+└─$ openssl x509 -text -in certiftxt.crt >> cert.pem 
+
+Знову перевірте сертифікат:
+┌──(nazar㉿Client)-[~]
+└─$ openssl verify certiftxt.crt                                   
+C = UA, ST = Kyivska oblast, L = Kyiv, O = KPI, OU = IPT, CN = FB-01 Sakhnii Nazar, emailAddress = snz24@gmail.com
+error 18 at 0 depth lookup: self signed certificate
+error certiftxt.crt: verification failed
+
+
+Скопіюйте файл сертифіката в ОС Windows і перегляньте його там.
+C:\Users\t-1000\Desktop>certutil certiftxt.crt
+X509 Certificate:  
+Version: 1  
+Serial Number: 5c70ca32d44c793cc15ca4249e20082a2c0ec81a 
+Signature Algorithm:
+    Algorithm ObjectId: 1.2.840.113549.1.1.11 sha256RSA 
+    Algorithm Parameters:
+    05 00 
+Issuer:
+    E=snz24@gmail.com
+    CN=FB-01 Sakhnii Nazar 
+etc...
+
+                                                                                                                                                                                                 Version: 1                                                                                                                                                                                                         Serial Number: 5c70ca32d44c793cc15ca4249e20082a2c0ec81a                                                                                                                                                            Signature Algorithm:   
+3.2 Шифрування файлів.
+
+Згенеруйте ключ для симетричного шифрування файлу:
+┌──(nazar㉿Client)-[~]
+└─$ openssl rand -out key.bin 64 
+
+
+Зашифруйте деякий достатньо великий файл, створивши перед тим його:
+┌──(nazar㉿Client)-[~]
+└─$ dd if=/dev/random of=largfile.dat status=progress                130 ⨯
+скопійовано 2453818880 байтів (2,5 GB, 2,3 GiB), 27 s, 90,9 MB/s^C
+4840614+0 записів прочитано
+4840613+0 записів записано
+скопійовано 2478393856 байтів (2,5 GB, 2,3 GiB), 27,2981 s, 90,8 MB/s
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ openssl enc -aes-256-cbc -salt -in largfile.dat -out largfile.dat.enc -pass file:./key.bin
+*** WARNING : deprecated key derivation used.
+Using -iter or -pbkdf2 would be better.
+
+
+Зашифруйте ключ шифрування файла асиметричним алгоритмом (використовуйте відкритий ключ):
+┌──(nazar㉿Client)-[~]
+└─$ openssl rsautl -encrypt -inkey pubkey.pem -pubin -in key.bin -out key.bin.enc
+
+або використовуйте відповідний сертифікат:
+┌──(nazar㉿Client)-[~]
+└─$ openssl rsautl -encrypt -inkey certif.crt -certin -in key.bin -out key.bin.enc2
+
+
+Розшифруйте ключ шифрування:
+┌──(nazar㉿Client)-[~]
+└─$ openssl rsautl -decrypt -inkey priv.key -in key.bin.enc -out key.bin2
+Enter pass phrase for priv.key:
+
+Потім розшифруйте файл:
+┌──(nazar㉿Client)-[~]
+└─$ openssl enc -d -aes-256-cbc -in largfile.dat.enc -out largfile.dat2 -pass file:./key.bin2
+*** WARNING : deprecated key derivation used.
+Using -iter or -pbkdf2 would be better.
+
+Порівняйте вихідний та розшифрований файли.
+┌──(nazar㉿Client)-[~]
+└─$ md5sum largfile.dat
+e164f3e4093a69ebc32e90e882d444ee  largfile.dat
+
+  ↑Однакові↓                           
+                                            
+┌──(nazar㉿Client)-[~]
+└─$ md5sum largfile.dat2
+e164f3e4093a69ebc32e90e882d444ee  largfile.dat2
+
+
+3.3 Цифровий підпис.
+
+Створіть деякий документ для тестування механізму цифрового підпису:
+
+┌──(nazar㉿Client)-[~]
+└─$ date +%s > example.txt
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ shasum example.txt
+8c742135edba1b4ac68ad840051211a08012f60d  example.txt                                                                          
+                                                                           
+┌──(nazar㉿Client)-[~]
+└─$ sha256sum example.txt
+7bf1667ebe71b16624c9c4ca3f5a75de696babf3c9f720d8a000365e171206a5  example.txt
+
+
+Розрахуйте значення цифрового підпису тестового документа (значення геш-функції, що зашифроване таємним ключем):
+┌──(nazar㉿Client)-[~]
+└─$ openssl dgst -sha256 -sign priv.key -out example.sha example.txt
+Enter pass phrase for priv.key:
+
+
+Використовуючи відкритий ключ, перевірте коректність цифрового підпису:
+┌──(nazar㉿Client)-[~]
+└─$ openssl dgst -sha256 -verify pubkey.pem -signature example.sha example.txt
+Verified OK
+
+
+Інший варіант обчислення цифрового підпису:
+
+Збережіть значення геш-функції документа окремим файлом:
+┌──(nazar㉿Client)-[~]
+└─$ openssl dgst -sha256 example.txt > example.hash 
+
+
+Зашифруйте відкритим ключем получений файл:
+┌──(nazar㉿Client)-[~]
+└─$ openssl rsautl -sign -inkey priv.key -keyform PEM -in example.hash > example.hash.sign
+Enter pass phrase for priv.key:
+
+
+Використовуючи відкритий ключ, проведіть зворотнє перетворення:
+┌──(nazar㉿Client)-[~]
+└─$ openssl rsautl -verify -pubin -inkey pubkey.pem -keyform PEM -in example.hash.sign
+SHA256(example.txt)= 7bf1667ebe71b16624c9c4ca3f5a75de696babf3c9f720d8a000365e171206a5
+
+
+Порівняйте отримане на попередньому кроці значення геш-функції зі значенням геш-функції, обчисленої на основі вмісту файлів:
+┌──(nazar㉿Client)-[~]
+└─$ openssl dgst -sha256 example.txt               
+SHA256(example.txt)= 7bf1667ebe71b16624c9c4ca3f5a75de696babf3c9f720d8a000365e171206a5
+
+
+У каталозі, де знаходяться файли, що створено у роботі, виконайте команду:
+┌──(nazar㉿Client)-[~]
+└─$ ls -l; date                     
+загалом 7261068
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Відео
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Документи
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Завантажене
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Загальне
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Картинки
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Музика
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Стільниця
+drwxr-xr-x 2 nazar nazar       4096 гру 12 20:23 Шаблони
+-rw-r--r-- 1 nazar nazar       1326 гру 13 23:33 certif.crt
+-rw-r--r-- 1 nazar nazar       1123 гру 13 23:31 certif.csr
+-rw-r--r-- 1 nazar nazar       4205 гру 13 23:35 certiftxt.crt
+-rw-r--r-- 1 nazar nazar       4205 гру 13 23:45 cert.pem
+-rw-r--r-- 1 nazar nazar       2452 гру 13 11:03 client.pubkey
+-rw-r--r-- 1 nazar nazar         86 гру 14 00:23 example.hash
+-rw-r--r-- 1 nazar nazar        256 гру 14 00:24 example.hash.sign
+-rw-r--r-- 1 nazar nazar        256 гру 14 00:21 example.sha
+-rw-r--r-- 1 nazar nazar         11 гру 14 00:20 example.txt
+-rw-r--r-- 1 nazar nazar         64 гру 14 00:06 key.bin
+-rw-r--r-- 1 nazar nazar         64 гру 14 00:15 key.bin2
+-rw-r--r-- 1 nazar nazar        256 гру 14 00:12 key.bin.enc
+-rw-r--r-- 1 nazar nazar        256 гру 14 00:12 key.bin.enc2
+-rw-r--r-- 1 nazar nazar 2478393856 гру 14 00:10 largfile.dat
+-rw-r--r-- 1 nazar nazar 2478393856 гру 14 00:16 largfile.dat2
+-rw-r--r-- 1 nazar nazar 2478393888 гру 14 00:11 largfile.dat.enc
+-rw-r--r-- 1 nazar nazar         13 гру 13 10:38 My_file
+-rw------- 1 nazar nazar       1766 гру 13 23:19 priv.key
+-rw-r--r-- 1 nazar nazar       1777 гру 13 23:43 pubkey.pem
+-rw-r--r-- 1 nazar nazar       2452 гру 13 12:21 server.pubkey
+-rw-r--r-- 1 nazar nazar         11 гру 13 15:05 test1.file
+-rw-r--r-- 1 nazar nazar       1333 гру 13 14:27 test1.file.asc
+-rw-r--r-- 1 nazar nazar         11 гру 13 15:04 test.file
+-rw-r--r-- 1 nazar nazar         11 гру 13 11:08 testfile
+-rw-r--r-- 1 nazar nazar        711 гру 13 14:26 test.file.asc
+-rw-r--r-- 1 nazar nazar        719 гру 13 11:09 testfile.asc
+вівторок, 14 грудня 2021 00:25:47 +0200
+
