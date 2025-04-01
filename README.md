@@ -41,3 +41,4 @@
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Binary Vulnerability Analysis/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Designing Data Intensive Applications/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Distributed Systems Design/` <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Intelligent Data Analysis/` <br>
