@@ -6,7 +6,7 @@
 KPI/<br>
 ─ Bachelor's degree/<br>
 |&nbsp;&nbsp;&nbsp;&nbsp;─ 1 course/ <br>
-|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Python Data Structures and Algorithms/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Python Data Structures and Algorithms/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Object Oriented Programming in Python/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Basics of Computer Networking/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;─ 2 course/<br>
