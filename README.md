@@ -26,4 +26,11 @@ KPI/<br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Cloud Data Сomputing Technologies/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Software Protection/ <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;─ 4 course/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Ethical Hacking/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Integrated Information Security Systems/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Security of OS/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Cyber Security Analysis and Monitoring/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Advanced SQL (MySQL)/ <br>
 ─ Master's degree/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;─ 5 course/ <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ Distributed Systems Design/ <br>
