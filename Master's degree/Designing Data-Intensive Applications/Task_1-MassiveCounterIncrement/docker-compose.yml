@@ -1,0 +1,63 @@
+version: "3.2"
+services:
+  # Hazelcast Node 1
+  hazelcast-node1:
+    container_name: 'massivecounter-node1'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_NETWORK_PUBLICADDRESS=192.168.50.48:5701
+      - HZ_CLUSTERNAME=massive-counter-cluster
+      - HAZELCAST_CONFIG=/opt/hazelcast/cp_distmap-hazelcast.xml
+    volumes:
+      - ./cp_distmap-hazelcast.xml:/opt/hazelcast/cp_distmap-hazelcast.xml
+    ports:
+      - '5701:5701'
+
+  # Hazelcast Node 2
+  hazelcast-node2:
+    container_name: 'massivecounter-node2'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_NETWORK_PUBLICADDRESS=192.168.50.48:5702
+      - HZ_CLUSTERNAME=massive-counter-cluster
+      - HAZELCAST_CONFIG=/opt/hazelcast/cp_distmap-hazelcast.xml
+    volumes:
+      - ./cp_distmap-hazelcast.xml:/opt/hazelcast/cp_distmap-hazelcast.xml
+    ports:
+      - '5702:5701'
+
+  # Hazelcast Node 3
+  hazelcast-node3:
+    container_name: 'massivecounter-node3'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_NETWORK_PUBLICADDRESS=192.168.50.48:5703
+      - HZ_CLUSTERNAME=massive-counter-cluster
+      - HAZELCAST_CONFIG=/opt/hazelcast/cp_distmap-hazelcast.xml
+    volumes:
+      - ./cp_distmap-hazelcast.xml:/opt/hazelcast/cp_distmap-hazelcast.xml
+    ports:
+      - '5703:5701'
+
+  # Management Center
+  hazelcast-management:
+    container_name: 'massivecounter-management-center'
+    image: 'hazelcast/management-center:5.4.0'
+    network_mode: 'hazelcast-network'
+    depends_on:
+      - hazelcast-node1
+      - hazelcast-node2
+      - hazelcast-node3
+    ports:
+      - '8080:8080'
+
+# External Network
+networks:
+  default:
+    name: hazelcast-network
+    driver: bridge
+
+
