@@ -1,0 +1,34 @@
+services:
+    # MongoDB Node 1
+    mongodb-node1:
+    ports:
+        - "27017:27017"
+    container_name: mongodb-node1
+    networks:
+        - "mongodb-network"
+    image: mongo:latest
+    command: mongod-replSet labReplicaSet-bind_ip_all
+
+    # MongoDB Node 2
+    mongodb-node2:
+    ports:
+        - "27018:27017"
+    container_name: mongodb-node2
+    networks:
+        - "mongodb-network"
+    image: mongo:latest
+    command: mongod-replSet labReplicaSet --bind_ip_all
+
+    # MongoDB Node 3
+    mongodb-node3:
+    ports:
+        - "27019:27017"
+    container_name: mongodb-node3
+    networks:
+        - "mongodb-network"
+    image: mongo:latest
+    command: mongod-replSet labReplicaSet --bind_ip_all
+
+networks:
+    mongodb-network:
+        driver: bridge
