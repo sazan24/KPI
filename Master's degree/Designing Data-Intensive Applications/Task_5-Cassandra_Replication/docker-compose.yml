@@ -1,0 +1,61 @@
+services:
+    # Сassandra Node 1
+    cassandra-node1:
+        image: bitnami/cassandra:latest
+        container_name: cassandra-node1
+        ports:
+            - '7000:7000'  # Внутрішньокластерна комунікація
+            - '9042:9042'  # Підключення до БД як CQL-клієнт
+        volumes:
+            - 'cassandra-node1:/bitnami'
+        environment:
+            - CASSANDRA_CLUSTER_NAME=labReplicaSet
+            - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2,cassandra-node3
+            - CASSANDRA_PASSWORD_SEEDER=yes
+            - CASSANDRA_PASSWORD=UIOP1234
+        networks:
+            - cassandra-network
+    
+    # Сassandra Node 2
+    cassandra-node2:
+        image: bitnami/cassandra:latest
+        container_name: cassandra-node2
+        ports:
+            - '7001:7000'  # Внутрішньокластерна комунікація
+            - '9043:9042'  # Підключення до БД як CQL-клієнт
+        volumes:
+            - 'cassandra-node2:/bitnami'
+        environment:
+            - CASSANDRA_CLUSTER_NAME=labReplicaSet
+            - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2,cassandra-node3
+            - CASSANDRA_PASSWORD=UIOP1234
+        networks:
+            - cassandra-network
+
+    # Сassandra Node 3
+    cassandra-node3:
+        image: bitnami/cassandra:latest
+        container_name: cassandra-node3
+        ports:
+            - '7002:7000'  # Внутрішньокластерна комунікація
+            - '9044:9042'  # Підключення до БД як CQL-клієнт
+        volumes:
+            - 'cassandra-node3:/bitnami'
+        environment:
+            - CASSANDRA_CLUSTER_NAME=labReplicaSet
+            - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2,cassandra-node3
+            - CASSANDRA_PASSWORD=UIOP1234
+        networks:
+            - cassandra-network
+
+volumes:
+    cassandra-node1:
+        driver: local
+    cassandra-node2:
+        driver: local
+    cassandra-node3:
+        driver: local
+
+networks:
+    cassandra-network:
+        driver: bridge
