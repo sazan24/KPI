@@ -1,0 +1,10 @@
+services:
+    postgresql_dbms:
+        container_name: 'massive_insert-postgresql'
+        environment:
+            - POSTGRES_DB=massive_insert-postgresql
+            - POSTGRES_USER=sazan24
+            - POSTGRES_PASSWORD=UIOP1234
+        ports:
+            - '5432:5432'
+        image: 'postgres:latest'
