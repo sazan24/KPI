@@ -1,0 +1,53 @@
+version: "3.2"
+
+services:
+  # Hazelcast Node 1
+  hazelcast-node1:
+    container_name: 'hazelcast-node1'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_CLUSTERNAME=distributed-map-cluster
+      - HZ_NETWORK_PUBLICADDRESS=172.18.0.1:5701
+    ports:
+      - '5701:5701'
+
+  # Hazelcast Node 2
+  hazelcast-node2:
+    container_name: 'hazelcast-node2'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_CLUSTERNAME=distributed-map-cluster
+      - HZ_NETWORK_PUBLICADDRESS=172.18.0.1:5702
+    ports:
+      - '5702:5701'
+
+  # Hazelcast Node 3
+  hazelcast-node3:
+    container_name: 'hazelcast-node3'
+    image: 'hazelcast/hazelcast:5.4.0'
+    network_mode: 'hazelcast-network'
+    environment:
+      - HZ_CLUSTERNAME=distributed-map-cluster
+      - HZ_NETWORK_PUBLICADDRESS=172.18.0.1:5703
+    ports:
+      - '5703:5701'
+
+  # Management Center
+  hazelcast-management:
+    container_name: 'distmap-management-center'
+    image: 'hazelcast/management-center:5.4.0'
+    network_mode: 'hazelcast-network'
+    depends_on:
+      - hazelcast-node1
+      - hazelcast-node2
+      - hazelcast-node3
+    ports:
+      - '8080:8080'
+
+
+# External Network
+networks:
+  hazelcast-network:
+    driver: bridge
