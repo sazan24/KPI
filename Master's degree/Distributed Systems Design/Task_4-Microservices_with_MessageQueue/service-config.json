@@ -1,0 +1,11 @@
+{
+  "logging-service": [
+    "http://localhost:8081/logging",
+    "http://localhost:8083/logging",
+    "http://localhost:8085/logging"
+  ],
+  "messages-service": [
+    "http://localhost:8082/messages",
+    "http://localhost:8084/messages"
+  ]
+}

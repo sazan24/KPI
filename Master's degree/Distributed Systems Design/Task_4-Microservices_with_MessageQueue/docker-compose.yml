@@ -1,0 +1,40 @@
+version: "3.2"
+
+services:
+  hazelcast-node1:
+    container_name: 'hazelcast-node1'
+    image: 'hazelcast/hazelcast:5.4.0'
+    environment:
+      - HZ_CLUSTERNAME=distributed-queue-cluster
+      - HZ_NETWORK_PUBLICADDRESS=10.246.8.9:5701
+    ports:
+      - '5701:5701'
+    networks:
+      - hazelcast-network
+
+  hazelcast-node2:
+    container_name: 'hazelcast-node2'
+    image: 'hazelcast/hazelcast:5.4.0'
+    environment:
+      - HZ_CLUSTERNAME=distributed-queue-cluster
+      - HZ_NETWORK_PUBLICADDRESS=10.246.8.9:5702
+    ports:
+      - '5702:5701'
+    networks:
+      - hazelcast-network
+
+  hazelcast-management:
+    container_name: 'distque-management-center'
+    image: 'hazelcast/management-center:5.4.0'
+    depends_on:
+      - hazelcast-node1
+      - hazelcast-node2
+    ports:
+      - '8008:8080'
+    networks:
+      - hazelcast-network
+
+
+networks:
+  hazelcast-network:
+    driver: bridge
