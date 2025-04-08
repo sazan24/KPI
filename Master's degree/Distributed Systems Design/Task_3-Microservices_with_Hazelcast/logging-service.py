@@ -43,12 +43,8 @@ if __name__ == "__main__":
               f" list of logging ports: {logging_ports}")
         sys.exit(1)
 
-    logging_containers = ["logging-service1", "logging-service2"]
-    for cname in logging_containers:
-        os.system(f"docker stop {cname} >nul 2>&1")
-
-    containers = ["hazelcast-node1", "hazelcast-node2", "hazelcast-node3", "distmap-management-center"]
-
+    containers = ["hazelcast-node1", "hazelcast-node2", 
+                  "hazelcast-node3", "distmap-management-center"]
     for cname in containers:
         os.system(f"docker start {cname} >nul 2>&1")
 
