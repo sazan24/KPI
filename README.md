@@ -34,7 +34,7 @@
 ─ **Master's degree/** <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;─ **5 course/** <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Analysis of Cyberattacks using ML/` <br>
-|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Social Engineering in Cybersecurity/` <br>
+|&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Social Engineering (OSINT)/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Administration of Secure IS/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `ICS-OT Security/` <br>
 |&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;─ `Security of Specialized IS/` <br>
